@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}TL;DR — Get to the point{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+  <header class="site-header"><a class="brand" href="{{ url_for('index') }}">TL;DR<span class="brand-dot">.</span></a><span class="header-note">Less reading. More clarity.</span></header>
+  <main>{% for message in get_flashed_messages() %}<div class="notice" role="alert">{{ message }}</div>{% endfor %}{% block content %}{% endblock %}</main>
+  <footer>Keep the original close. A summary can leave out important details.</footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,51 +1,6 @@
-<html>
-  <head>
-		<title>TL;DR</title>
-		<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/index2.css') }}" />
-		<link rel="stylesheet" type="text/css" href="../static/css/index2.css" />
-		<style type="text/css">
-			body {
-				overflow-x: hidden;
-				overflow-y: hidden;
-			}
-			.summary-body {
-				height: 80%;
-			}
-		</style>
-	</head>
-
-	<body>
-		<div class="header">
-			<div class="heading">
-				<a href="/"><h1>TL;DR</h1></a>
-			</div>
-		</div>
-		<div class="summary-body">
-			<div class="result-inner">
-				{% block content %}
-					{% for sent in summaries %}
-						<p class="result">{{ sent|e }}</p>
-					{% endfor %}
-				{% endblock %}
-			</div>
-		
-			<div class="stats">
-				<div class="percentage">
-					<h2><b>STATISTICS<b></h2>
-					<p><span>Percentage reduced:</span> {{ percentage }}%</p>
-				</div>
-				<div class="words">
-					<P>Most used words: </p>
-					{% block words %}
-						{% for word in words %}
-							<p class="result"> {{ word }} </p> 
-						{% endfor %}
-					{% endblock %}
-				</div>
-				<div class="download">
-					<a href="/download" class="submit download">Download</a>
-				</div>
-			</div>
-		</div>
-	</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Your summary — TL;DR{% endblock %}
+{% block content %}
+<div class="result-heading"><div><p class="eyebrow">THE HIGHLIGHTS</p><h1>Your brief is ready<span class="brand-dot">.</span></h1><p class="intro">{{ title or 'The key sentences, in their original order.' }}</p></div><a class="secondary" href="{{ url_for('index') }}">Start another →</a></div>
+<div class="result-grid"><article class="summary-card"><div class="card-heading"><span>SUMMARY</span><span>{{ summaries|length }} sentences</span></div>{% for sentence in summaries %}<p class="summary-sentence">{{ sentence }}</p>{% endfor %}<a class="primary download" href="{{ url_for('download') }}">Download Word document ↓</a><p class="help">Download available for one hour.</p></article><aside class="insights"><div class="stat"><span class="mini-label">WORD COUNT REDUCED</span><strong>{{ percentage }}<span>%</span></strong><p>Fewer words than the original. This measures length, not summary quality.</p></div><div class="stat"><span class="mini-label">RECURRING TERMS</span><div class="tags">{% for word in words %}<span>{{ word }}</span>{% endfor %}</div></div><div class="timing">Summarized in {{ elapsed_ms }} ms<span>Text processing only; excludes upload and article retrieval.</span></div></aside></div>
+{% endblock %}
