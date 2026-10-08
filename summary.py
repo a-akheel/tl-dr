@@ -1,141 +1,48 @@
+"""Frequency-based extractive summaries: retain original wording and order."""
+from collections import Counter
+
 from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.tokenize.punkt import PunktSentenceTokenizer, PunktTrainer
 from nltk.stem import WordNetLemmatizer
-from collections import OrderedDict
-from itertools import islice
-from operator import itemgetter
+from nltk.tokenize import sent_tokenize, word_tokenize
 
 lemmatizer = WordNetLemmatizer()
-pcts = '''!()-[]{};:'"\,“”’``''<>./?@#$%^&*_~''' + "'s"
 
 
 def clean_text(text):
-
-	stop_words = set(stopwords.words('english'))
-	text = text.lower()
-	tokens = word_tokenize(text)
-
-	words = [w for w in tokens if w not in stop_words]
-	words = [w for w in words if w not in pcts]
-
-	return words
-
-
-def score_words(text):
-
-	unique = []
-	imp_words = clean_text(text)
-	score = {}
-	
-	for w in imp_words:
-		#print(w)
-		w = lemmatizer.lemmatize(w)
-		if w not in unique:
-			unique.append(w)
-			score[w] = 1
-
-		elif w in unique:
-			score[w] += 1
-
-	return [score, unique]
-
-def score_sentences(text, word_scores, unique):
-
-	trainer = PunktTrainer()
-	trainer.INCLUDE_ALL_COLLOCS = True
-	trainer.train(text)
-	sent_score = {}
-	
-	sent_tokenizer = PunktSentenceTokenizer(trainer.get_params())
-	sentences = sent_tokenizer.tokenize(text.lower())
-
-	for s in sentences:
-		words = clean_text(s)
-		sent_score[s] = 0
-
-		for w in words:
-			w = lemmatizer.lemmatize(w)
-			if w in unique:
-				sent_score[s] += word_scores[w]
-
-	return sent_score
-
-
-def similarity_score(t, s):
-
-	tt = clean_text(t)
-	st = clean_text(s)
-	count = 0
-
-	for w in st:
-		if w in tt:
-			count += 1
-
-	ratio = count / len(tt)
-
-	return ratio
-
-
-def rank_sentences(text, sentence_scores, title="", n=7):
-
-	final_sentences = []
-
-	trainer = PunktTrainer()
-	trainer.INCLUDE_ALL_COLLOCS = True
-	trainer.train(text)	
-	sent_tokenizer = PunktSentenceTokenizer(trainer.get_params())
-
-	for s in sentence_scores:
-		if title == "":
-			break
-		else:
-			sentence_scores[s] *= (1 + similarity_score(title, s))
-
-	sc = sentence_scores.copy()
-	sc = OrderedDict(sorted(sc.items(), key=lambda t: t[1], reverse=True))
-	ordered_sents = dict(islice(sc.items(), n))
-
-	proper_sentences = sent_tokenizer.tokenize(text)
-
-	for s in proper_sentences:
-		if s.lower() in ordered_sents:
-			final_sentences.append(s)
-
-	return final_sentences
+    excluded = set(stopwords.words("english"))
+    return [lemmatizer.lemmatize(word.lower()) for word in word_tokenize(text)
+            if word.isalnum() and word.lower() not in excluded]
 
 
 def summarize(text, title="", n=7):
+    if n < 1:
+        raise ValueError("Summary length must be positive.")
+    if not text.strip():
+        return []
+    sentences = sent_tokenize(text)
+    tokens = [clean_text(sentence) for sentence in sentences]
+    frequencies = Counter(word for words in tokens for word in words)
+    title_words = set(clean_text(title)) if title else set()
+    scores = []
+    for index, words in enumerate(tokens):
+        score = sum(frequencies[word] for word in words) / max(len(words), 1)
+        if title_words:
+            score *= 1 + len(title_words.intersection(words)) / len(title_words)
+        scores.append((index, score))
+    selected = sorted(index for index, _ in sorted(scores, key=lambda row: -row[1])[:n])
+    return [sentences[index] for index in selected]
 
-	word_scores, unique_words = score_words(text)
-	sentence_scores = score_sentences(text, word_scores, unique_words)
-	final_sentences = rank_sentences(text, sentence_scores, title, n)
 
-	return final_sentences
+def word_count(text):
+    return sum(word.isalnum() for word in word_tokenize(text))
+
 
 def getPercentage(text, final_sentences):
+    original = word_count(text)
+    if original == 0:
+        return 0
+    return round(100 * (1 - word_count(" ".join(final_sentences)) / original))
 
-	stext = ""
-	for s in final_sentences:
-		stext += s
-
-	TextWordCount = word_tokenize(text)
-	words = [w for w in TextWordCount if w not in pcts]
-	wcount0 = len(words)
-
-	FinalWordCount = word_tokenize(stext)
-	wds = [w for w in FinalWordCount if w not in pcts]
-	wcount1 = len(wds)
-
-	per = round(((wcount0 - wcount1) / wcount0) * 100)
-
-	return per
 
 def getTopWords(text, n=5):
-
-	score, unique = score_words(text)
-	topWords = dict(sorted(score.items(), key=itemgetter(1), reverse=True)[:n])
-	tpWords = []
-	for word in topWords:
-		tpWords.append(word.capitalize())
-	return tpWords
+    return [word.capitalize() for word, _ in Counter(clean_text(text)).most_common(n)]

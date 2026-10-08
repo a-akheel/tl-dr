@@ -1,159 +1,26 @@
-<html>
-  <head>
-		<title>TL;DR</title>
-		<!-- href="{{ url_for('static', filename='css/index.css') }}" -->
-		<meta charset="utf-8">
-  	<meta name="viewport" content="width=device-width, initial-scale=1">
-  	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
-  	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
-		<link rel="stylesheet" type="text/css" href="../static/css/index2.css" />
-		<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/index2.css') }}" />
-	</head>
-
-	<body>
-		<div class="header">
-			<div class="heading">
-				<a href="/"><h1>TL;DR</h1></a>
-			</div>
-		</div>
-		<div class="main">
-			<div class="tab-header">
-				<div class="tabs">
-					<ul class="nav nav-pills nav-fill">
-    				<li class="active"><a href="#copy">Copy/Paste</a></li>
-    				<li><a href="#url">URL</a></li>
-    				<li><a href="#upload">Upload</a></li>
-					</ul>
-				</div>
-				<div class="size">
-					Summarize in <input type="number" class="len s" name="copy-size" min="3" max="30" style="width:40px;" value="7" form="copy-form" /> 
-					<input type="number" name="url-size" class="len" min="3" max="30" style="width:40px;" value="7" form="url-form" />
-					<input type="number" name="upload-size" class="len" min="3" max="30" style="width:40px;" value="7" form="upload-form" /> sentences
-				</div>
-			</div>
-
-			<div class="tab-content">
-				<div id="copy" class="tab-pane fade in active">
-					<div class="summary-body">
-						<form method="POST" id="copy-form">
-							<textarea name="text" placeholder="Enter text here" required></textarea><br />
-							<input type="submit" name="submit" class="submit" value="Summarize" />
-						</form>
-					</div>
-					
-				</div>
-				
-				<div id="url" class="tab-pane fade">
-					<div class="summary-body">
-						<div class="url">
-							<form method="POST" id="url-form">
-								<center>
-									<label>URL: </label>
-									<input type="url" name="url" id="url" required />
-									<div class="show-user">
-										<h2 id="url-title"></h2>
-										<p id="url-result"></p>
-									</div>
-								</center>
-								<input type="submit" class="submit" value="Summarize" />
-							</form>
-						</div>
-					</div>
-				</div>
-				
-				<div id="upload" class="tab-pane fade">
-					<div class="summary-body">
-						<div class="upload">
-							<form method="POST" enctype="multipart/form-data" id="upload-form">
-								<center>
-									<input type="text" name="placeholder" style="display: none;" />
-									<input type="file" name="file" id="file" required />
-									<br />
-									<div class="show-user">
-										<p id="show-file"></p>
-									</div>
-								</center>
-								<input type="submit" class="submit" value="Summarize" />
-							</form>
-						</div>
-						
-					</div>
-				</div>	
-			</div>
-
-			
-		</div>
-
-		{% with messages = get_flashed_messages() %}
-      {% if messages %}
-       	{% for message in messages %}
-					<div class="alert alert-warning alert-dismissible" role="alert">
-           	<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button>
-            	{{message}}
-          </div>
-       	{% endfor %}
-      {% endif %}
-    {% endwith %}
-
-		<script type="text/javascript">
-			$(document).ready(function(){
-				$(".nav-pills a").click(function(){
-					$(this).tab('show');
-					var val = $(this).text();
-					console.log(val);
-
-					if (val == "Copy/Paste") {
-						$('input[name="copy-size"]').addClass('s');
-						$('input[name="url-size"]').removeClass('s');
-						$('input[name="upload-size"]').removeClass('s');
-					} else if (val == "URL") {
-						$('input[name="copy-size"]').removeClass('s');
-						$('input[name="url-size"]').addClass('s');
-						$('input[name="upload-size"]').removeClass('s');
-					} else if (val == "Upload") {
-						$('input[name="copy-size"]').removeClass('s');
-						$('input[name="url-size"]').removeClass('s');
-						$('input[name="upload-size"]').addClass('s');
-					}
-				});
-			});
-		</script>
-
-		<script type="text/javascript">
-			$(function() {
-			  $('#url').change(function() {
-					$.getJSON('/_show_url_content', {
-				  	url: $('input[name="url"]').val(),
-					}, function(data) {
-					$("#url-title").text(data.title);
-				  $("#url-result").text(data.result);
-				});
-				return false;
-			  });
-			});
-		</script>
-
-		<!-- <script type="text/javascript">
-			$(function() {
-				
-			  $('input[name="file"]').change(function() {
-					var val = $('input[name=file]').val();
-					console.log(val);
-					var file_name = val.replace("C:\\fakepath\\", "")
-					console.log(file_name)
-					$.getJSON('/_show_file_content', {
-				  	url: file_name,
-					}, function(data) {
-					$("#show-file").text(data.result);
-				});
-				console.log("Not happening");
-				return false;
-			  });
-			});
-		</script> -->
-
-
-
-	</body>
-</html>
+{% extends "base.html" %}
+{% block content %}
+<section class="hero"><div><p class="eyebrow">YOUR NEXT READ, SIMPLIFIED</p><h1>Long document.<br><span>Clear takeaways.</span></h1><p class="intro">Pull the key sentences from an article or document. Choose your length, review the highlights, and take them with you.</p></div><div class="hero-card"><span class="mini-label">FROM INFORMATION TO ACTION</span><div class="flow-line"><span>01</span> Bring your document</div><div class="flow-line"><span>02</span> Find the highlights</div><div class="flow-line"><span>03</span> Export your brief</div></div></section>
+<section class="workspace" aria-label="Create a summary">
+  <nav class="tabs" aria-label="Input type"><button type="button" class="tab active" data-panel="paste" aria-pressed="true">Paste text</button><button type="button" class="tab" data-panel="article" aria-pressed="false">Article link</button><button type="button" class="tab" data-panel="upload" aria-pressed="false">Upload document</button></nav>
+  <div id="paste" class="panel"><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="field-head"><label for="text">What are you reading?</label><button type="button" id="sample" class="text-button">Try a sample ↗</button></div><textarea id="text" name="text" maxlength="100000" placeholder="Paste a report, article, or meeting recap here…" required></textarea><div class="form-bottom"><label>Summary length <input aria-label="Summary length in sentences" type="number" name="copy-size" min="3" max="30" value="3" required> sentences</label><button class="primary" type="submit">Create summary <span aria-hidden="true">→</span></button></div></form></div>
+  <div id="article" class="panel" hidden><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label for="url">Public article URL</label><input class="wide-input" id="url" name="url" type="url" placeholder="https://example.com/article" required><p class="help">Works with readable HTML articles. For paywalled or interactive pages, paste the text instead.</p><div class="form-bottom"><label>Summary length <input aria-label="Summary length in sentences" type="number" name="url-size" min="3" max="30" value="3" required> sentences</label><button class="primary" type="submit">Create summary <span aria-hidden="true">→</span></button></div></form></div>
+  <div id="upload" class="panel" hidden><form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label for="file">Choose a document</label><div class="upload-box"><span class="upload-icon" aria-hidden="true">↑</span><input id="file" name="file" type="file" accept=".txt,.pdf,.docx" required><p class="help">TXT, PDF, or DOCX · up to 5 MB<br>PDFs need selectable text; scanned pages are not supported.</p></div><div class="form-bottom"><label>Summary length <input aria-label="Summary length in sentences" type="number" name="upload-size" min="3" max="30" value="3" required> sentences</label><button class="primary" type="submit">Create summary <span aria-hidden="true">→</span></button></div></form></div>
+</section>
+<div class="benefits"><div><strong>Your words, condensed.</strong><p>Highlights keep the source’s original wording.</p></div><div><strong>A length that fits.</strong><p>Choose from 3 to 30 sentences.</p></div><div><strong>Ready to share.</strong><p>Download your summary as a Word document.</p></div></div>
+<p class="privacy">Uploads are processed in memory. Summaries are stored locally for up to one hour of download access; expired records are removed on the next summary or download request.</p>
+{% endblock %}
+{% block scripts %}<script>
+const tabs = document.querySelectorAll('.tab');
+tabs.forEach(tab => tab.addEventListener('click', () => {
+  tabs.forEach(item => { item.classList.toggle('active', item === tab); item.setAttribute('aria-pressed', String(item === tab)); });
+  document.querySelectorAll('.panel').forEach(panel => { panel.hidden = panel.id !== tab.dataset.panel; });
+}));
+document.getElementById('sample').addEventListener('click', async () => {
+  const response = await fetch('{{ url_for("static", filename="demo.txt") }}');
+  if (response.ok) { document.getElementById('text').value = await response.text(); document.getElementById('text').focus(); }
+});
+document.querySelectorAll('form').forEach(form => form.addEventListener('submit', () => {
+  const button = form.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'Finding the highlights…';
+}));
+</script>{% endblock %}

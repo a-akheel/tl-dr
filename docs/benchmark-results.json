@@ -1,0 +1,36 @@
+{
+  "python": "3.14.8",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "repetitions_per_sample": 30,
+  "requested_sentences": 3,
+  "scope": "Synthetic samples; warm summarizer only, excluding network, parsing, and rendering. No quality or user-impact claim.",
+  "results": [
+    {
+      "sample": "customer-rollout.txt",
+      "input_words": 142,
+      "output_words": 44,
+      "sentences": 3,
+      "word_reduction_percent": 69,
+      "median_ms": 2.68,
+      "p95_ms": 2.86
+    },
+    {
+      "sample": "discovery-notes.txt",
+      "input_words": 126,
+      "output_words": 35,
+      "sentences": 3,
+      "word_reduction_percent": 72,
+      "median_ms": 2.68,
+      "p95_ms": 2.74
+    },
+    {
+      "sample": "incident-review.txt",
+      "input_words": 118,
+      "output_words": 37,
+      "sentences": 3,
+      "word_reduction_percent": 69,
+      "median_ms": 2.63,
+      "p95_ms": 2.66
+    }
+  ]
+}
