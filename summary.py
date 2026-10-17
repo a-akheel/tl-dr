@@ -7,7 +7,7 @@ from itertools import islice
 from operator import itemgetter
 
 lemmatizer = WordNetLemmatizer()
-pcts = '''!()-[]{};:'"\,“”’``''<>./?@#$%^&*_~''' + "'s"
+pcts = r'''!()-[]{};:'"\,“”’``''<>./?@#$%^&*_~''' + "'s"
 
 
 def clean_text(text):
@@ -72,7 +72,7 @@ def similarity_score(t, s):
 		if w in tt:
 			count += 1
 
-	ratio = count / len(tt)
+	ratio = count / len(tt) if tt else 0
 
 	return ratio
 
@@ -127,7 +127,7 @@ def getPercentage(text, final_sentences):
 	wds = [w for w in FinalWordCount if w not in pcts]
 	wcount1 = len(wds)
 
-	per = round(((wcount0 - wcount1) / wcount0) * 100)
+	per = round(((wcount0 - wcount1) / wcount0) * 100) if wcount0 else 0
 
 	return per
 
