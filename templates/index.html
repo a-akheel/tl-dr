@@ -36,7 +36,7 @@
 			<div class="tab-content">
 				<div id="copy" class="tab-pane fade in active">
 					<div class="summary-body">
-						<form method="POST" id="copy-form">
+						<form method="POST" id="copy-form"><input type="hidden" name="csrf_token" value="{{ session['csrf'] }}">
 							<textarea name="text" placeholder="Enter text here" required></textarea><br />
 							<input type="submit" name="submit" class="submit" value="Summarize" />
 						</form>
@@ -47,7 +47,7 @@
 				<div id="url" class="tab-pane fade">
 					<div class="summary-body">
 						<div class="url">
-							<form method="POST" id="url-form">
+							<form method="POST" id="url-form"><input type="hidden" name="csrf_token" value="{{ session['csrf'] }}">
 								<center>
 									<label>URL: </label>
 									<input type="url" name="url" id="url" required />
@@ -65,7 +65,7 @@
 				<div id="upload" class="tab-pane fade">
 					<div class="summary-body">
 						<div class="upload">
-							<form method="POST" enctype="multipart/form-data" id="upload-form">
+							<form method="POST" enctype="multipart/form-data" id="upload-form"><input type="hidden" name="csrf_token" value="{{ session['csrf'] }}">
 								<center>
 									<input type="text" name="placeholder" style="display: none;" />
 									<input type="file" name="file" id="file" required />

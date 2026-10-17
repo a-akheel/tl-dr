@@ -1,148 +1,141 @@
+"""Local document summarizer. Cookies contain identifiers, never document contents."""
+
+import io
+import json
 import os
-import random
-from flask import Flask, render_template, url_for, redirect, url_for, request, flash, session, jsonify, send_file
-from werkzeug.utils import secure_filename
-from summary import summarize, getPercentage, getTopWords
-from webScrape import getArticle
-from readfile import getText
+import secrets
+import sqlite3
+import tempfile
+import time
+from pathlib import Path
+from flask import Flask, abort, jsonify, render_template, request, send_file, session
 from docx import Document
-
-files = []
-
-UPLOAD_FOLDER = '../uploads'
-ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'docx'])
-
-APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-
-app = Flask(__name__)
-app.secret_key = "bubblysnowmeninjeanschicago"
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+from summary import summarize, getPercentage, getTopWords
+from readfile import getText
+from webScrape import getArticle
 
 
-def getRandomNumber(n):
-    global files
+def create_app(config=None):
+    app = Flask(__name__)
+    app.config.update(
+        SECRET_KEY=os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32),
+        MAX_CONTENT_LENGTH=6 * 1024 * 1024,
+        STATE_DB=os.environ.get(
+            "STATE_DB", str(Path(app.instance_path) / "state.sqlite3")
+        ),
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Strict",
+    )
+    app.config.update(config or {})
+    db_path = Path(app.config["STATE_DB"])
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(db_path) as db:
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS state (id TEXT PRIMARY KEY, payload TEXT, updated REAL)"
+        )
+    db_path.chmod(0o600)
 
-    while True:
-        num = int(''.join(random.sample('0123456789', n)))
+    def state(value=None):
+        sid = session.setdefault("sid", secrets.token_urlsafe(32))
+        with sqlite3.connect(db_path) as db:
+            db.execute("DELETE FROM state WHERE updated < ?", (time.time() - 86400,))
+            if value is not None:
+                db.execute(
+                    "INSERT OR REPLACE INTO state VALUES (?, ?, ?)",
+                    (sid, json.dumps(value), time.time()),
+                )
+                return value
+            row = db.execute("SELECT payload FROM state WHERE id=?", (sid,)).fetchone()
+            return json.loads(row[0]) if row else {}
 
-        if num not in files:
-            files.append(num)
-            return num
-    
+    @app.before_request
+    def protect_forms():
+        session.setdefault("csrf", secrets.token_urlsafe(32))
+        if request.method == "POST":
+            token = request.form.get("csrf_token", "")
+            if not secrets.compare_digest(token, session["csrf"]):
+                abort(403)
 
-@app.route('/')
-def index():
-    return render_template("index.html")
+    @app.after_request
+    def private_response(response):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        return response
 
+    @app.get("/")
+    def index():
+        return render_template("index.html")
 
-@app.route('/', methods=['POST'])
-def get_text():
-    summ = []
-    if request.method == 'POST':
-
-        if 'text' in request.form:
-            text = request.form.get('text')
-            size = int(request.form.get('copy-size'))
-
-            summ = summarize(text, n=size)
-
-        elif 'url' in request.form:
-            url = request.form.get('url')
-            print("MY URL: " + url)
-            # title, text = getArticle(url)
-            title = session['url-title']
-            text = session['url-text']
-            size = int(request.form.get('url-size'))
-
-            summ = summarize(text, title, n=size)
-
-        elif 'placeholder' in request.form:
-            target = os.path.join(APP_ROOT, "uploads")
-
-            if not os.path.isdir(target):
-                os.mkdir(target)
-
-            file = request.files['file']
-            size = int(request.form.get('upload-size'))
-        
-            if file.filename == '':
-                flash('No selected file')
-                return redirect(request.url)
-
-            if file and allowed_file(file.filename):
-                filename = str(getRandomNumber(5)) + "_" + secure_filename(file.filename)
-                print("Filename: " + str(filename))
-                destination = "\\".join([target, filename])
-                print(destination)
-                file.save(destination)
-                session['uploaded'] = destination
-                text = getText(destination)
-                summ = summarize(text, n=size)
-
+    @app.post("/")
+    def get_text():
+        title = ""
+        try:
+            if "text" in request.form:
+                text, size = request.form["text"], request.form.get("copy-size", "7")
+            elif "url" in request.form:
+                title, text = getArticle(request.form["url"])
+                size = request.form.get("url-size", "7")
             else:
-                flash("Unsupported file. Please upload only .docx, .pdf or .txt files.")
-                return redirect(request.url)
+                upload = request.files.get("file")
+                if not upload or not upload.filename:
+                    abort(400, "Select a document.")
+                suffix = Path(upload.filename).suffix.lower()
+                if suffix not in {".txt", ".pdf", ".docx"}:
+                    abort(400, "Supported files: TXT, PDF, DOCX.")
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / ("document" + suffix)
+                    upload.save(path)
+                    text = getText(path)
+                size = request.form.get("upload-size", "7")
+            size = int(size)
+            if not 1 <= size <= 30 or not text.strip() or len(text) > 100_000:
+                abort(
+                    400, "Enter 1–100,000 characters and a summary length from 1 to 30."
+                )
+            result = summarize(text, title, n=size)
+            state({"title": title, "summary": result})
+            return render_template(
+                "result.html",
+                summaries=result,
+                percentage=getPercentage(text, result),
+                words=getTopWords(text),
+            )
+        except (ValueError, UnicodeError):
+            abort(400, "Invalid input or document.")
+        except LookupError:
+            abort(503, "Install the documented NLTK resources before summarizing.")
 
-        session['summary'] = summ
-        percentage = getPercentage(text, summ)
-        topWords = getTopWords(text)
-        return render_template("result.html", summaries=summ, percentage=percentage, words=topWords)
+    @app.get("/download/")
+    def download():
+        current = state()
+        if "summary" not in current:
+            abort(404, "Generate a summary first.")
+        doc = Document()
+        doc.add_heading(current.get("title") or "Summary", level=2)
+        for sentence in current["summary"]:
+            doc.add_paragraph(sentence)
+        stream = io.BytesIO()
+        doc.save(stream)
+        stream.seek(0)
+        return send_file(
+            stream,
+            download_name="Summary.docx",
+            as_attachment=True,
+            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
 
-    print("FAILURE")
-    return render_template("index.html")
+    @app.get("/_show_url_content/")
+    def show_url_content():
+        try:
+            title, text = getArticle(request.args.get("url", ""))
+            return jsonify(title=title, result=text)
+        except ValueError:
+            abort(400, "URL is unavailable or not explicitly allowed.")
 
-
-@app.route('/download/')
-def download():
-    try:
-        summ = session['summary']
-        target = os.path.join(APP_ROOT, "downloads")
-        
-        if not os.path.isdir(target):
-            os.mkdir(target)
-        
-        filename = "Summary" + str(getRandomNumber(7)) + ".docx"
-        file = Document()
-        destination = "\\".join([target, filename])
-        print("Download destination: " + destination)
-
-        if session['url-title'] != "":
-            file.add_heading(session['url-title'], level=2)
-        else:
-            file.add_heading("Summary", level=1)
-
-        for sent in summ:
-            file.add_paragraph(sent)
-
-        file.save(destination)
-        return send_file(destination, attachment_filename=filename, as_attachment=True)
-        
-
-    except Exception as e:
-        return """
-        <p>An unexpected error has occured. Click <a href="/">here</a> to go back.</p>
-        Error : 
-        """ + str(e)
+    return app
 
 
-@app.route('/_show_url_content/')
-def show_url_content():
-    try:
-        url = request.args.get('url', 0, type=str)
-        #print("URL: " + url)
-
-        title, text = getArticle(url)
-        session['url-title'] = title
-        session['url-text'] = text
-        return jsonify(title=title, result=text)
-
-    except Exception as e:
-        return str(e)
-
-
+app = create_app()
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="127.0.0.1", debug=False)
